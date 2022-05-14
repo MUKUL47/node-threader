@@ -1,6 +1,6 @@
 {
   "name": "node-threader",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "multi-thread library for nodejs run time",
   "main": "index.js",
   "scripts": {
