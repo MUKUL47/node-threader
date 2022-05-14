@@ -8,7 +8,7 @@ npm i node-threader
 
 ### usage
 
-```
+```javascript
 const NodeThreader = require("node-threader");
 //BELOW LINE IS REQUIRED SINCE WHOLE NODE PROCESS INCLUDES BOTH MASTER & WORKER THREADS
 if (!require("cluster").isMaster) return;
