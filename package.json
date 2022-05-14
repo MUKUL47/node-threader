@@ -1,0 +1,19 @@
+{
+  "name": "node-threader",
+  "version": "1.0.0",
+  "description": "multi-thread library for nodejs run time",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MUKUL47/node-threader.git"
+  },
+  "author": "Mukul",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/MUKUL47/node-threader/issues"
+  },
+  "homepage": "https://github.com/MUKUL47/node-threader#readme"
+}
