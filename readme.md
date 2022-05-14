@@ -14,9 +14,8 @@ const NodeThreader = require("node-threader");
 if (!require("cluster").isMaster) return;
 const instance = new NodeThreader(2, true);
 
-//function must be enclosed in IFFE
+//function must be enclosed in IFFE & enclosed in string
 
-//async executing must be wrapped in string
 const myThread = instance.execute(
   `(function () {
     return new Promise((r) => {
@@ -31,9 +30,9 @@ const myThread = instance.execute(
 
 //synchronous execution
 instance.execute(
-  (function(){
+  `(function(){
       for(let i = 0; i < 1000000;i++){}
       return 'Useless loop ran in worker thread'
-  }()),console.log
+  }())`,console.log
 );
 ```
