@@ -9,30 +9,47 @@ npm i node-threader
 ### usage
 
 ```javascript
-const NodeThreader = require("node-threader");
-//BELOW LINE IS REQUIRED SINCE WHOLE NODE PROCESS INCLUDES BOTH MASTER & WORKER THREADS
+const NodeThreader = require(".");
+//*REQUIRED* this condition check if mandatory because once thread is forked from master this whole block will be executed again to avoid this only allow NodeThreader to initialize only in master node.
 if (!require("cluster").isMaster) return;
+
+//thread -> number | null(consider all threads)
+//exitProcess => boolean (exit process once all thread executions are completed)
 const instance = new NodeThreader(2, true);
 
-//function must be enclosed in IFFE & enclosed in string
+//executable MUST be an ARROW function as it can enclosed in string and retains its property after & before serializing/de-serializing while communicating with clusters.
+//thread response supports both callback & promise
 
-const myThread = instance.execute(
-  `(function () {
-    return new Promise((r) => {
-      setTimeout(() => r('Hello'), 1000);
-    });
-  })()`,
-  (data) => {
-    //callback from thread
-    console.log(`thread : ${myThread.id}, response = `, data);
+instance.execute(
+  () => {
+    return `Synchronus task : ${2e2 * 2e2}`;
+  },
+  (error, response) => {
+    console.log("callback response ", response);
   }
 );
 
-//synchronous execution
-instance.execute(
-  `(function(){
-      for(let i = 0; i < 1000000;i++){}
-      return 'Useless loop ran in worker thread'
-  }())`,console.log
-);
+instance
+  .execute(
+    () => {
+      throw "Let me throw error for no reason";
+    },
+    (error, response) => {
+      console.log("callback error ", error);
+    }
+  )
+  .catch((catchResponse) => {
+    console.log("Promise rejected ", catchResponse);
+  });
+
+instance
+  .execute(() => {
+    return new Promise(async (r) => {
+      await new Promise((r) => setTimeout(r, 1000));
+      r("Completed after 1000ms");
+    });
+  })
+  .then((promiseResponse) => {
+    console.log("Promise resolved ", promiseResponse);
+  });
 ```

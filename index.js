@@ -1,8 +1,18 @@
 if (!require("cluster").isMaster) {
   process.on("message", async (data) => {
+    let isError = false;
+    const response = await (async () => {
+      try {
+        return await eval(data.data)();
+      } catch (e) {
+        isError = true;
+        return e;
+      }
+    })();
     process.send({
-      response: await eval(data.data),
+      response,
       invokerId: data.invokerId,
+      isError,
     });
   });
   return;
@@ -10,7 +20,6 @@ if (!require("cluster").isMaster) {
 
 class NodeThreader {
   threads = [];
-  listeners = {};
   invokers = {};
   exitProcess = false;
   /**
@@ -24,8 +33,7 @@ class NodeThreader {
 
   initializeThreads(threads = 1) {
     const cluster = require("cluster");
-    const cpus = require("os").cpus().length;
-    this.threads = Array(threads || cpus)
+    this.threads = Array(threads || require("os").cpus().length)
       .fill(true)
       .map(cluster.fork);
     this.initializeListener();
@@ -37,15 +45,21 @@ class NodeThreader {
   }
 
   addListener = (thread) => {
-    this.listeners[thread.id] = ({ invokerId, response }) => {
-      this.invokers[thread.id]?.[invokerId]?.(response);
-      delete this.invokers[thread.id]?.[invokerId];
-      if (Object.keys(this.invokers[thread.id]).length === 0) {
-        delete this.invokers[thread.id];
-      }
-      this.exitProcessOnComplete();
-    };
-    thread.on("message", this.listeners[thread.id]);
+    thread.on("message", async ({ invokerId, response, isError }) => {
+      const currentInvokers = this.invokers[thread.id]?.[invokerId];
+      currentInvokers?.callback?.(
+        (isError && response) || null,
+        (!isError && response) || null
+      );
+      currentInvokers?.[(isError && "reject") || "resolve"]?.(response);
+      setTimeout(() => {
+        delete this.invokers[thread.id]?.[invokerId];
+        if (Object.keys(this.invokers[thread.id]).length === 0) {
+          delete this.invokers[thread.id];
+        }
+        this.exitProcessOnComplete();
+      });
+    });
     thread.on("exit", () => this.onThreadExit(thread));
   };
 
@@ -69,22 +83,31 @@ class NodeThreader {
    * @param {function} data
    * @param {string} data
    * @param {function} callback
+   * @returns Promise
    */
   execute(data, callback) {
     const thread = this.threads.slice(0, 1)[0];
+    const invokerId = this.initializeInvoker(thread, callback);
     thread.send({
       data: (typeof data === "string" && data) || `${data}`,
-      invokerId: this.initializeInvoker(thread, callback),
+      invokerId,
     });
     this.threads.push(this.threads.splice(0, 1)[0]);
-    return thread;
+    const invoker = this.invokers[thread.id][invokerId];
+    invoker["callback"] = callback;
+    return new Promise((resolve, reject) => {
+      invoker["resolve"] = resolve;
+      invoker["reject"] = reject;
+    });
   }
 
-  initializeInvoker(thread, callback) {
+  initializeInvoker(thread) {
     const invokerId = Math.random() * 999999999;
     this.invokers[thread.id] =
       (!this.invokers[thread.id] && {}) || this.invokers[thread.id];
-    this.invokers[thread.id][invokerId] = callback;
+    this.invokers[thread.id][invokerId] = {
+      ...(this.invokers[thread.id][invokerId] || {}),
+    };
     return invokerId;
   }
 }
