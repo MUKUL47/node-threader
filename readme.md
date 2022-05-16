@@ -9,7 +9,7 @@ npm i node-threader
 ### usage
 
 ```javascript
-const NodeThreader = require(".");
+import NodeThreader from "node-threader";
 //*REQUIRED* this condition check if mandatory because once thread is forked from master this whole block will be executed again to avoid this only allow NodeThreader to initialize only in master node.
 if (!require("cluster").isMaster) return;
 
